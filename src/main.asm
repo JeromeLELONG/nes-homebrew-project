@@ -121,6 +121,14 @@ reset:
 	:
 		bit $2002
 		bpl :-
+	lda #$01                ; enable pulse 1
+    sta $4015
+    lda #$08                ; period
+    sta $4002
+    lda #$02
+    sta $4003
+    lda #$bf                ; volume
+    sta $4000
 	; NES is initialized, ready to begin!
 	; enable the NMI for graphical updates, and jump to our main program
 	lda #%10001000
@@ -140,6 +148,8 @@ scroll_x:       .res 1 ; x scroll position
 scroll_y:       .res 1 ; y scroll position
 scroll_nmt:     .res 1 ; nametable select (0-3 = $2000,$2400,$2800,$2C00)
 temp:           .res 1 ; temporary variable
+load_background: .res 1
+cursor_y_2: 	.res 1
 
 .segment "BSS"
 nmt_update: .res 256 ; nametable update entry buffer for PPU update
@@ -170,6 +180,13 @@ nmi:
 	bne :+ ; nmi_ready == 0 not ready to update PPU
 		jmp @ppu_update_end
 	:
+	lda cursor_y_2
+	cmp #40
+	;bcc :+
+		inc cursor_y_2
+	;:
+	lda cursor_y_2
+	sta oam+(22)+0
 	cmp #2 ; nmi_ready == 2 turns rendering off
 	bne :+
 		lda #%00000000
@@ -378,6 +395,14 @@ gamepad: .res 1
 ; gamepad_poll: this reads the gamepad state into the variable labelled "gamepad"
 ;   This only reads the first gamepad, and also if DPCM samples are played they can
 ;   conflict with gamepad reading, which may give incorrect results.
+;
+; main
+;
+
+.segment "CODE"
+; gamepad_poll: this reads the gamepad state into the variable labelled "gamepad"
+;   This only reads the first gamepad, and also if DPCM samples are played they can
+;   conflict with gamepad reading, which may give incorrect results.
 gamepad_poll:
 	; strobe the gamepad to latch current button state
 	lda #1
@@ -400,10 +425,6 @@ gamepad_poll:
 	sta gamepad
 	rts
 
-;
-; main
-;
-
 .segment "RODATA"
 example_palette:
 .byte $0F,$15,$26,$37 ; bg0 purple/pink
@@ -414,12 +435,23 @@ example_palette:
 .byte $0F,$14,$24,$34 ; sp1 purple
 .byte $0F,$1B,$2B,$3B ; sp2 teal
 .byte $0F,$12,$22,$32 ; sp3 marine
+background:
+	.byte	$91,$92,$9B,$9B,$9B,$9B,$9B,$9B
+	.byte	$9B,$9B,$9B,$9B,$9B,$9B,$9B,$9B
+	.byte	$D6,$D7,$90,$90,$90,$90,$90,$90
+	.byte	$90,$90,$90,$90,$90,$90,$90,$90
+	.byte	$90,$90,$90,$90,$90,$90,$90,$90
+	.byte	$90,$90,$90,$90,$90,$90,$90,$90
+	.byte	$90,$90,$90,$90,$90,$90,$90,$90
+	.byte	$90,$90,$90,$90,$90,$90,$90,$90
 
 .segment "ZEROPAGE"
 cursor_x: .res 1
 cursor_y: .res 1
 temp_x:   .res 1
 temp_y:   .res 1
+start_pressed: .res 1
+
 
 .segment "CODE"
 main:
@@ -432,27 +464,127 @@ main:
 		cpx #32
 		bcc :-
 	jsr setup_background
+	lda #0
+	sta load_background
+	lda #0
+	sta start_pressed
+	lda #20
+	sta cursor_y_2
 	; center the cursor
 	lda #128
 	sta cursor_x
 	lda #120
 	sta cursor_y
 	; show the screen
-	;jsr draw_cursor
+	jsr draw_cursor
 	jsr ppu_update
 	; main loop
 @loop:
 	; read gamepad
+	jsr gamepad_poll
+	lda gamepad
+	and #PAD_START
+	beq :+
+		jsr push_start
+		jmp @draw ; start trumps everything, don't check other buttons
+	:
+	lda cursor_y
+	cmp #20
+	bcc :+
+		jsr update_y_sprite_position
+	:
 
+	lda cursor_y
+	cmp #20
+	bcs :+
+		jsr update_x_sprite_position
+	:
 
 @draw:
 	; draw everything and finish the frame
-	;jsr draw_cursor
+	
+	
+	jsr draw_cursor
 	jsr ppu_update
 	; keep doing this forever!
 	jmp @loop
 
+update_y_sprite_position:
+	dec cursor_y
+	; Y wraps at 240
+	lda cursor_y
+	cmp #240
+	bcc :+
+		lda #239
+		sta cursor_y
+	:
+	rts
 
+update_x_sprite_position:
+	dec cursor_x
+	; Y wraps at 240
+	lda cursor_x
+	cmp #240
+	bcc :+
+		lda #239
+		sta cursor_x
+	:
+	rts
+
+draw_cursor:
+	; four sprites centred around the currently selected tile
+	; y position (note, needs to be one line higher than sprite's appearance)
+	lda cursor_y
+	sec
+	sbc #5 ; Y-5
+	sta oam+(0*4)+0
+	sta oam+(1*4)+0
+	lda cursor_y
+	clc
+	adc #3 ; Y+3
+	sta oam+(2*4)+0
+	sta oam+(3*4)+0
+	lda #10
+	sta oam+(20)+0
+	; tile
+	lda #0
+	sta oam+(0*4)+1
+	lda #1
+	sta oam+(1*4)+1
+	lda #16
+	sta oam+(2*4)+1
+	lda #17
+	sta oam+(3*4)+1
+	lda #17
+	sta oam+(20)+1
+	sta oam+(21)+1
+	; attributes
+	lda #%00000000 ; no flip
+	sta oam+(0*4)+2
+	;lda #%01000000 ; horizontal flip
+	sta oam+(1*4)+2
+	;lda #%10000000 ; vertical flip
+	sta oam+(2*4)+2
+	;lda #%11000000 ; both flip
+	sta oam+(3*4)+2
+	sta oam+(20)+2
+	sta oam+(21)+2
+	; x position
+	lda cursor_x
+	sec
+	sbc #4 ; X-4
+	sta oam+(0*4)+3
+	sta oam+(2*4)+3
+	lda cursor_x
+	clc
+	adc #4 ; X+4
+	sta oam+(1*4)+3
+	sta oam+(3*4)+3
+	lda #10
+	sta oam+(20)+3
+	lda #20
+	sta oam+(21)+3
+	rts
 
 setup_background:
 	; first nametable, start by clearing to empty
@@ -479,7 +611,27 @@ setup_background:
 		dex
 		bne :-
 	; fill in an area in the middle with 1/2 checkerboard
-	lda #1
+	;lda #0
+	;ldy #8
+	;ldx #8
+	;jsr ppu_address_tile
+	;sta $2007
+	;lda #2
+	;ldy #8
+	;ldx #9
+	;jsr ppu_address_tile
+	;lda #2
+	;sta $2007
+	;pha
+	;jsr ppu_update
+	;pla
+;@forever:
+;	jmp @forever
+	;lda #3
+	;ldy #8
+	;ldx #10
+	;jsr ppu_address_tile
+	;sta $2007
 	ldy #8 ; start at row 8
 	:
 		pha ; temporarily store A, it will be clobbered by ppu_address_tile routine
@@ -488,52 +640,35 @@ setup_background:
 		pla ; recover A
 		; write a line of checkerboard
 		ldx #8
-		:
-			sta $2007
-			eor #$3
-			inx
-			cpx #(32-8)
-			bcc :-
+	:
+		stx temp_x
+		ldx load_background
+		lda background, x
+		inc load_background
+		ldx temp_x
+		sta $2007
+		eor #$3
+		inx
+		cpx #(32-8)
+		bcc :-
 		eor #$3
 		iny
 		cpy #(30-8)
 		bcc :--
 	; second nametable, fill with simple pattern
-	lda #$24
-	sta $2006
-	lda #$00
-	sta $2006
-	lda #$00
-	ldy #30
-	:
-		ldx #32
-		:
-			sta $2007
-			clc
-			adc #1
-			and #3
-			dex
-			bne :-
-		clc
-		adc #1
-		and #3
-		dey
-		bne :--
-	; 4 stripes of attribute
-	lda #0
-	ldy #4
-	:
-		ldx #16
-		:
-			sta $2007
-			dex
-			bne :-
-		clc
-		adc #%01010101
-		dey
-		bne :--
+	
+	rts
+
+push_start:
+	lda #1
+	sta start_pressed
+	lda #128
+	sta cursor_x
+	lda #120
+	sta cursor_y
 	rts
 
 ;
 ; end of file
 ;
+
