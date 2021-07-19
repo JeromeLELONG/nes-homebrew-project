@@ -1,20 +1,28 @@
 Modules list:
 -------------
 gamename.o:
-    CODE              Offs=000000  Size=000052  Align=00001  Fill=0000
-    INES              Offs=000000  Size=000008  Align=00001  Fill=0000
+    CODE              Offs=000000  Size=000218  Align=00001  Fill=0000
+    RODATA            Offs=000000  Size=000020  Align=00001  Fill=0000
+    BSS               Offs=000000  Size=000120  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000000  Size=00000D  Align=00001  Fill=0000
+    HEADER            Offs=000000  Size=000010  Align=00001  Fill=0000
+    TILES             Offs=000000  Size=002000  Align=00001  Fill=0000
     VECTORS           Offs=000000  Size=000006  Align=00001  Fill=0000
-    CHR0a             Offs=000000  Size=002000  Align=00001  Fill=0000
+    OAM               Offs=000000  Size=000100  Align=00001  Fill=0000
 
 
 Segment list:
 -------------
 Name                   Start     End    Size  Align
 ----------------------------------------------------
-CHR0a                 000000  001FFF  002000  00001
-INES                  000000  000007  000008  00001
-CODE                  008000  008051  000052  00001
-VECTORS               00BFFA  00BFFF  000006  00001
+HEADER                000000  00000F  000010  00001
+TILES                 000000  001FFF  002000  00001
+ZEROPAGE              000000  00000C  00000D  00001
+OAM                   000200  0002FF  000100  00001
+BSS                   000300  00041F  000120  00001
+CODE                  008000  008217  000218  00001
+RODATA                008218  008237  000020  00001
+VECTORS               00FFFA  00FFFF  000006  00001
 
 
 Exports list by name:
