@@ -1,0 +1,7 @@
+This project was developed by Mário Azevedo (Nesrocks) of Bit Ink Studios.
+All code may be used freely for any project.
+Forbidden use of all graphics for commercial projects. The graphics are provided for educational purposes only.
+"Mini Hiking League", "Super Hiking League" and "Bit Ink Studios" are the property of Bit Ink Studios.
+Ca65.exe and ld65.exe are provided as is, such that the project is available with a compatible version of these executables.
+Famitone2 by Shiru is the sound engine used and is also provided as is, in a compatible version with this project.
+Fceux is also provided as is, just so the package is complete. Any NES emulator should work.
