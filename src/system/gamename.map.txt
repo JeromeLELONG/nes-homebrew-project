@@ -1,0 +1,38 @@
+Modules list:
+-------------
+gamename.o:
+    CODE              Offs=000000  Size=000F13  Align=00001  Fill=0000
+    RODATA            Offs=000000  Size=001BC2  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000000  Size=0000FD  Align=00001  Fill=0000
+    HEADER            Offs=000000  Size=00000A  Align=00001  Fill=0000
+    SAMPLE            Offs=000000  Size=000340  Align=00001  Fill=0000
+    VECTORS           Offs=000000  Size=000006  Align=00001  Fill=0000
+    CHR               Offs=000000  Size=006000  Align=00001  Fill=0000
+
+
+Segment list:
+-------------
+Name                   Start     End    Size  Align
+----------------------------------------------------
+CHR                   000000  005FFF  006000  00001
+HEADER                000000  000009  00000A  00001
+ZEROPAGE              000010  00010C  0000FD  00001
+CODE                  008000  008F12  000F13  00001
+RODATA                009000  00ABC1  001BC2  00001
+SAMPLE                00FCB0  00FFEF  000340  00001
+VECTORS               00FFFA  00FFFF  000006  00001
+
+
+Exports list by name:
+---------------------
+
+
+
+Exports list by value:
+----------------------
+
+
+
+Imports list:
+-------------
+
