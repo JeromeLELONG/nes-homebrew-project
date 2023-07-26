@@ -165,6 +165,8 @@ scroll_nmt:     .res 1 ; nametable select (0-3 = $2000,$2400,$2800,$2C00)
 temp:           .res 1 ; temporary variable
 cursor_y_2: 	.res 1
 a_pressed:		.res 1
+cursor_x_heart: 	.res 1
+cursor_y_heart: 	.res 1
 
 
 .segment "BSS"
@@ -494,10 +496,10 @@ example_palette:
 ;.byte $0F,$09,$19,$29 ; bg1 green
 ;.byte $0F,$01,$11,$21 ; bg2 blue
 ;.byte $0F,$00,$10,$30 ; bg3 greyscale
-.byte $0F,$18,$28,$38 ; sp0 yellow
-.byte $0F,$14,$24,$34 ; sp1 purple
-.byte $0F,$1B,$2B,$3B ; sp2 teal
-.byte $0F,$12,$22,$32 ; sp3 marine
+.byte $0F,$18,$28,$38 ; sp0 yellow   palette sprites 1
+.byte $0F,$14,$16,$34 ; sp1 purple   palette sprites 2
+.byte $0F,$1B,$2B,$3B ; sp2 teal   palette sprites 3
+.byte $0F,$12,$22,$32 ; sp3 marine   palette sprites 4
 
 background:
 .incbin "map/imagemap.map"
@@ -528,6 +530,10 @@ main:
 	;:
 
 	; setup 
+	lda #32
+	sta cursor_x_heart
+	lda #10
+	sta cursor_y_heart
 
 	lda #32
 	sta index_heart_x
@@ -619,6 +625,26 @@ main:
 	and #PAD_A
 	beq :+
 		jsr push_a
+	:
+		lda gamepad
+	and #PAD_U
+	beq :+
+		jsr push_u
+	:
+	lda gamepad
+	and #PAD_D
+	beq :+
+		jsr push_d
+	:
+	lda gamepad
+	and #PAD_L
+	beq :+
+		jsr push_l
+	:
+	lda gamepad
+	and #PAD_R
+	beq :+
+		jsr push_r
 	:
 	;lda cursor_y
 	;cmp #20
@@ -734,14 +760,17 @@ draw_cursor:
 
 
 draw_cursor_2:
-	lda #10   ; position Y du sprite
+	lda cursor_y_heart
+	;lda #10   ; position Y du sprite
 	sta oam+(4*4)+0
 	lda #56 ; tile du sprite coeur
 	sta oam+(4*4)+1 
-	lda #%10000000 ; vertical flip
+	lda #%10000001 ; vertical flip et palette 2
 	sta oam+(4*4)+2
-	lda #32 ; position X du sprite
+	lda cursor_x_heart
+	;lda #32 ; position X du sprite 
 	sta oam+(4*4)+3
+
 
 	;sta oam+(21)+1
 	;sta oam+(20)+2
@@ -888,3 +917,32 @@ push_a:
 ; end of file
 ;
 
+push_u:
+	dec cursor_y_heart
+	; Y wraps at 240
+	lda cursor_y_heart
+	cmp #240
+	bcc :+
+		lda #239
+		sta cursor_y_heart
+	:
+	rts
+
+push_d:
+	inc cursor_y_heart
+	; Y wraps at 240
+	lda cursor_y_heart
+	cmp #240
+	bcc :+
+		lda #0
+		sta cursor_y_heart
+	:
+	rts
+
+push_l:
+	dec cursor_x_heart
+	rts
+
+push_r:
+	inc cursor_x_heart
+	rts
