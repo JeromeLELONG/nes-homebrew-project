@@ -59,7 +59,9 @@ INES_SRAM   = 0 ; 1 = battery backed SRAM at $6000-7FFF
 ;
 
 .segment "TILES"
-.incbin "graphics/tileset.chr"
+;.incbin "graphics/tileset.chr"
+.incbin "graphics/virus.chr"
+.incbin "graphics/sprites.chr"
 ;.incbin "sprite.chr"
 
 ;
@@ -121,14 +123,18 @@ reset:
 	:
 		bit $2002
 		bpl :-
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Ici activer le son
 	lda #$01                ; enable pulse 1
     sta $4015
     lda #$08                ; period
     sta $4002
     lda #$02
     sta $4003
-    lda #$bf                ; volume
+    ;lda #$bf                ; volume
+	lda #00
     sta $4000
+	; Fin activation du son
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	; NES is initialized, ready to begin!
 	; enable the NMI for graphical updates, and jump to our main program
 	lda #%10001000
@@ -140,16 +146,26 @@ reset:
 ;
 
 .segment "ZEROPAGE"
+index_heart_x:      .res 1
+load_background: .res 1
+already_moved:  .res 1
+test_cmp:		.res 1
+test_cmp_count:  .res 1
+seed:			.res 2
+cursor_x: .res 1
+cursor_y: .res 1
 nmi_lock:       .res 1 ; prevents NMI re-entry
 nmi_count:      .res 1 ; is incremented every NMI
+nmi_count_2:    .res 1
 nmi_ready:      .res 1 ; set to 1 to push a PPU frame update, 2 to turn rendering off next NMI
 nmt_update_len: .res 1 ; number of bytes in nmt_update buffer
 scroll_x:       .res 1 ; x scroll position
 scroll_y:       .res 1 ; y scroll position
 scroll_nmt:     .res 1 ; nametable select (0-3 = $2000,$2400,$2800,$2C00)
 temp:           .res 1 ; temporary variable
-load_background: .res 1
 cursor_y_2: 	.res 1
+a_pressed:		.res 1
+
 
 .segment "BSS"
 nmt_update: .res 256 ; nametable update entry buffer for PPU update
@@ -175,18 +191,27 @@ nmi:
 	sta nmi_lock
 	; increment frame counter
 	inc nmi_count
+	;lda nmi_count
+	;cmp #21
+	;bcs :+
+	; 	inc nmi_count_2
+	; 	lda #0
+	; 	sta already_moved
+	;:
+
 	;
 	lda nmi_ready
 	bne :+ ; nmi_ready == 0 not ready to update PPU
 		jmp @ppu_update_end
 	:
-	lda cursor_y_2
-	cmp #40
+
+	;lda cursor_y_2
+	;cmp #40
 	;bcc :+
-		inc cursor_y_2
+		;inc cursor_y_2
 	;:
-	lda cursor_y_2
-	sta oam+(22)+0
+	;lda cursor_y_2
+	;sta oam+(22)+0
 	cmp #2 ; nmi_ready == 2 turns rendering off
 	bne :+
 		lda #%00000000
@@ -195,6 +220,42 @@ nmi:
 		stx nmi_ready
 		jmp @ppu_update_end
 	:
+
+	; augmenter le volume
+	lda nmi_count_2
+	cmp #2
+	bne :+
+		lda #$01                ; enable pulse 1
+    	sta $4015
+    	lda #$08                ; period
+    	sta $4002
+    	lda #$02
+    	sta $4003
+    	;lda #$bf                ; volume
+		lda #$bf
+    	sta $4000
+	:
+	;
+
+	; diminuer le volume
+	lda nmi_count_2
+	cmp #3
+	bne :+
+	 	;lda #$01                ; enable pulse 1
+		lda #$00				; disable pulse 1
+     	sta $4015
+     	lda #$08                ; period
+     	sta $4002
+     	lda #$02
+     	sta $4003
+     	;lda #$bf                ; volume
+	 	lda #$00
+     	sta $4000
+	:
+	;
+
+
+
 	; sprite OAM DMA
 	ldx #0
 	stx $2003
@@ -427,27 +488,31 @@ gamepad_poll:
 
 .segment "RODATA"
 example_palette:
-.byte $0F,$15,$26,$37 ; bg0 purple/pink
-.byte $0F,$09,$19,$29 ; bg1 green
-.byte $0F,$01,$11,$21 ; bg2 blue
-.byte $0F,$00,$10,$30 ; bg3 greyscale
+.byte $0c,$22,$10,$32,$0c,$04,$1c,$3d,$0c,$05,$2a,$29,$0c,$14,$2c,$30
+
+;.byte $0F,$15,$26,$37 ; bg0 purple/pink
+;.byte $0F,$09,$19,$29 ; bg1 green
+;.byte $0F,$01,$11,$21 ; bg2 blue
+;.byte $0F,$00,$10,$30 ; bg3 greyscale
 .byte $0F,$18,$28,$38 ; sp0 yellow
 .byte $0F,$14,$24,$34 ; sp1 purple
 .byte $0F,$1B,$2B,$3B ; sp2 teal
 .byte $0F,$12,$22,$32 ; sp3 marine
+
 background:
-	.byte	$91,$92,$9B,$9B,$9B,$9B,$9B,$9B
-	.byte	$9B,$9B,$9B,$9B,$9B,$9B,$9B,$9B
-	.byte	$D6,$D7,$90,$90,$90,$90,$90,$90
-	.byte	$90,$90,$90,$90,$90,$90,$90,$90
-	.byte	$90,$90,$90,$90,$90,$90,$90,$90
-	.byte	$90,$90,$90,$90,$90,$90,$90,$90
-	.byte	$90,$90,$90,$90,$90,$90,$90,$90
-	.byte	$90,$90,$90,$90,$90,$90,$90,$90
+.incbin "map/imagemap.map"
+	; .byte	$91,$92,$9B,$9B,$9B,$9B,$9B,$9B
+	; .byte	$9B,$9B,$9B,$9B,$9B,$9B,$9B,$9B
+	; .byte	$D6,$D7,$90,$90,$90,$90,$90,$90
+	; .byte	$90,$90,$90,$90,$90,$90,$90,$90
+	; .byte	$90,$90,$90,$90,$90,$90,$90,$90
+	; .byte	$90,$90,$90,$90,$90,$90,$90,$90
+	; .byte	$90,$90,$90,$90,$90,$90,$90,$90
+	; .byte	$90,$90,$90,$90,$90,$90,$90,$90
 
 .segment "ZEROPAGE"
-cursor_x: .res 1
-cursor_y: .res 1
+;cursor_x: .res 1
+;cursor_y: .res 1
 temp_x:   .res 1
 temp_y:   .res 1
 start_pressed: .res 1
@@ -455,14 +520,35 @@ start_pressed: .res 1
 
 .segment "CODE"
 main:
+	;lda #200
+	;cmp #2
+	;beq :+      ; comparaison égal zéro, la branche fonctionne
+	;	lda #$FF
+	;	sta test_cmp
+	;:
+
 	; setup 
+
+	lda #32
+	sta index_heart_x
+
+	lda #100
+	beq :+   ; si la valeur chargée dans l'accumulateur vaut plus que zéro, la branche fonctionne
+		inc test_cmp_count
+		lda #$FF
+		sta test_cmp
+	:
+
 	ldx #0
 	:
+		inc test_cmp_count
 		lda example_palette, X
 		sta palette, X
 		inx
 		cpx #32
 		bcc :-
+	lda #1
+	sta seed
 	jsr setup_background
 	lda #0
 	sta load_background
@@ -480,6 +566,47 @@ main:
 	jsr ppu_update
 	; main loop
 @loop:
+	;inc nmi_count_2
+	lda nmi_count
+	cmp #21
+	beq :+
+		;inc nmi_count_2
+		;lda already_moved
+		;cmp #0
+		;beq :+
+		;	inc nmi_count_2
+		;:
+		lda #1
+		sta already_moved
+	:
+
+
+
+	lda nmi_count
+	cmp #20
+	beq :+
+		lda #0
+		sta already_moved
+	:
+
+	;lda nmi_count
+	;cmp #20
+	;bcs :+
+	lda already_moved
+	cmp #0
+	beq :+
+		;lda already_moved
+		;cmp #0
+		;bcs :+
+			jsr galois16
+			jsr update_y_sprite_position
+			;inc nmi_count_2
+			;inc nmi_count
+			lda #1
+			sta already_moved
+		;:
+	:
+	;jsr galois16
 	; read gamepad
 	jsr gamepad_poll
 	lda gamepad
@@ -488,36 +615,65 @@ main:
 		jsr push_start
 		jmp @draw ; start trumps everything, don't check other buttons
 	:
-	lda cursor_y
-	cmp #20
-	bcc :+
-		jsr update_y_sprite_position
+	lda gamepad
+	and #PAD_A
+	beq :+
+		jsr push_a
 	:
+	;lda cursor_y
+	;cmp #20
+	;bcc :+
+	;	jsr update_y_sprite_position
+	;:
 
-	lda cursor_y
-	cmp #20
-	bcs :+
+	;lda cursor_y
+	;lda cursor_x
+	;cmp #20
+	;bcs :+
 		jsr update_x_sprite_position
-	:
+	;:
 
 @draw:
 	; draw everything and finish the frame
 	
 	
 	jsr draw_cursor
+	jsr draw_cursor_2
 	jsr ppu_update
 	; keep doing this forever!
 	jmp @loop
 
-update_y_sprite_position:
-	dec cursor_y
-	; Y wraps at 240
-	lda cursor_y
-	cmp #240
+galois16:
+	ldy #8
+	lda seed+0
+:
+	asl        ; shift the register
+	rol seed+1
 	bcc :+
-		lda #239
-		sta cursor_y
-	:
+	eor #$39   ; apply XOR feedback whenever a 1 bit is shifted out
+:
+	dey
+	bne :--
+	sta seed+0
+	cmp #0     ; reload flags
+	sta cursor_y
+	inc nmi_count_2
+	rts
+
+update_y_sprite_position:
+	; jsr galois16
+	; ldx #0
+	;lda seed
+	
+
+	; dec cursor_y
+	; ; Y wraps at 240
+	; lda cursor_y
+	; cmp #240
+	; bcc :+
+	; 	lda #239
+	; 	sta cursor_y
+	; :
 	rts
 
 update_x_sprite_position:
@@ -544,8 +700,6 @@ draw_cursor:
 	adc #3 ; Y+3
 	sta oam+(2*4)+0
 	sta oam+(3*4)+0
-	lda #10
-	sta oam+(20)+0
 	; tile
 	lda #0
 	sta oam+(0*4)+1
@@ -556,8 +710,6 @@ draw_cursor:
 	lda #17
 	sta oam+(3*4)+1
 	lda #17
-	sta oam+(20)+1
-	sta oam+(21)+1
 	; attributes
 	lda #%00000000 ; no flip
 	sta oam+(0*4)+2
@@ -567,8 +719,7 @@ draw_cursor:
 	sta oam+(2*4)+2
 	;lda #%11000000 ; both flip
 	sta oam+(3*4)+2
-	sta oam+(20)+2
-	sta oam+(21)+2
+
 	; x position
 	lda cursor_x
 	sec
@@ -580,11 +731,27 @@ draw_cursor:
 	adc #4 ; X+4
 	sta oam+(1*4)+3
 	sta oam+(3*4)+3
-	lda #10
-	sta oam+(20)+3
-	lda #20
-	sta oam+(21)+3
+
+
+draw_cursor_2:
+	lda #10   ; position Y du sprite
+	sta oam+(4*4)+0
+	lda #56 ; tile du sprite coeur
+	sta oam+(4*4)+1 
+	lda #%10000000 ; vertical flip
+	sta oam+(4*4)+2
+	lda #32 ; position X du sprite
+	sta oam+(4*4)+3
+
+	;sta oam+(21)+1
+	;sta oam+(20)+2
+	;sta oam+(21)+2
+	;lda #10
+	;sta oam+(20)+3
+	;lda #20
+	;sta oam+(21)+3
 	rts
+
 
 setup_background:
 	; first nametable, start by clearing to empty
@@ -605,6 +772,7 @@ setup_background:
 		dey
 		bne :--
 	; set all attributes to 0
+	;ldx #64 ; 64 bytes
 	ldx #64 ; 64 bytes
 	:
 		sta $2007
@@ -649,11 +817,13 @@ setup_background:
 		sta $2007
 		eor #$3
 		inx
-		cpx #(32-8)
+		;cpx #(32-8)
+		cpx #24
 		bcc :-
 		eor #$3
 		iny
-		cpy #(30-8)
+		;cpy #(32-8)
+		cpy #24
 		bcc :--
 	; second nametable, fill with simple pattern
 	
@@ -665,6 +835,52 @@ push_start:
 	lda #128
 	sta cursor_x
 	lda #120
+	sta cursor_y
+
+	;lda #4
+	;ldx #8
+	;ldy #8
+	;jmp ppu_update_tile
+	
+	;lda #4
+	;ldx #9
+	;ldy #9
+	;jmp ppu_update_tile
+	
+	;lda #4
+	;ldx #9
+	;ldy #9
+	;jmp ppu_update_tile
+	
+	;lda #4
+	;ldx #10
+	;ldy #10
+	;jmp ppu_update_tile
+	
+	;lda #4
+	;ldx #11
+	;ldy #11
+	;jmp ppu_update_tile
+	
+	;lda #4
+	;ldx #12
+	;ldy #12
+	;jmp ppu_update_tile
+	
+	lda #170
+	ldx index_heart_x
+	inc index_heart_x
+	ldy #0
+	jsr ppu_update_tile
+	rts
+
+
+push_a:
+	lda #1
+	sta a_pressed
+	lda #60
+	sta cursor_x
+	lda #60
 	sta cursor_y
 	rts
 
