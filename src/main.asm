@@ -146,6 +146,7 @@ reset:
 ;
 
 .segment "ZEROPAGE"
+position_x_sprite_1: .res 1
 index_heart_x:      .res 1
 load_background: .res 1
 already_moved:  .res 1
@@ -257,6 +258,9 @@ nmi:
 	;
 
 
+	; enregister la position x du sprite 1
+	lda oam+(0*4)+3
+	sta position_x_sprite_1
 
 	; sprite OAM DMA
 	ldx #0
